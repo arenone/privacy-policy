@@ -1,54 +1,72 @@
-Html
-预览
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>zwh口算通关 隐私政策</title>
+  <title>我的公众号</title>
   <style>
-    body { font-family: "Microsoft YaHei", sans-serif; padding: 20px; line-height: 1.6; color: #333; }
-    h1, h2 { color: #2c3e50; }
-    ul { padding-left: 20px; }
+    body { font-family: -apple-system, sans-serif; padding: 15px; background: #f5f5f7; }
+    .article { background: white; margin: 10px 0; padding: 12px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .title { font-size: 18px; color: #000; text-decoration: none; }
+    .source { font-size: 12px; color: #888; margin-top: 4px; }
+    .date { font-size: 11px; color: #aaa; }
   </style>
 </head>
 <body>
-  <h1>zwh口算通关 隐私政策</h1>
-  <p><strong>生效日期：</strong>2025年10月7日</p>
+  <h2>未读公众号文章</h2>
+  <div id="articles"></div>
 
-  <h2>1. 引言</h2>
-  <p>感谢您使用“zwh口算通关”应用（以下简称“本应用”）。我们高度重视您的个人信息与隐私安全。本隐私政策旨在清晰、透明地说明本应用如何处理用户信息。</p>
-  <p>需要特别说明的是：本应用为<strong>纯本地运行的离线工具</strong>，不包含任何网络通信功能，亦不会收集、存储、使用或传输您的任何个人信息。</p>
+  <script>
+    // 👇 在这里填写你要监控的公众号 ID（从 er.shi.ci.mi 获取）
+    const wechatIds = [
+      'yujiantouzi',
+      'ticaiyanjiushi',
+      // 你可以在这里继续添加更多，比如：
+      // 'example1',
+      // 'example2'
+    ];
 
-  <h2>2. 数据收集与使用</h2>
-  <p>本应用所有功能（包括题目生成、计算、答题等）均在您的设备本地完成，无需联网。我们<strong不会</strong>：</p>
-  <ul>
-    <li>收集您的姓名、手机号、电子邮箱等个人身份信息；</li>
-    <li>访问或读取您的通讯录、位置、相机、麦克风、相册等敏感数据；</li>
-    <li>记录或上传您的答题记录、使用时长、操作行为等任何用户数据；</li>
-    <li>连接互联网或向任何服务器发送数据。</li>
-  </ul>
+    const articles = [];
 
-  <h2>3. 权限说明</h2>
-  <p>本应用<strong未申请任何 Android 系统权限</strong>，包括但不限于：</p>
-  <ul>
-    <li><code>INTERNET</code>（网络访问）</li>
-    <li><code>READ_EXTERNAL_STORAGE</code> / <code>WRITE_EXTERNAL_STORAGE</code>（读写存储）</li>
-    <li><code>ACCESS_FINE_LOCATION</code> / <code>ACCESS_COARSE_LOCATION</code>（定位）</li>
-    <li>以及其他任何敏感权限。</li>
-  </ul>
+    async function fetchRSS(id) {
+      const url = `https://rsshub.app/wechat/ershicimi/${id}`;
+      try {
+        const response = await fetch(url);
+        const text = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/xml');
+        const items = doc.querySelectorAll('item');
+        items.forEach(item => {
+          const title = item.querySelector('title')?.textContent || '无标题';
+          const link = item.querySelector('link')?.textContent || '#';
+          const pubDate = item.querySelector('pubDate')?.textContent || '';
+          const date = pubDate ? new Date(pubDate).toLocaleString('zh-CN') : '';
+          articles.push({ title, link, date, source: id });
+        });
+      } catch (e) {
+        console.error('Failed to fetch:', id, e);
+      }
+    }
 
-  <h2>4. 第三方服务</h2>
-  <p>本应用<strong未集成任何第三方 SDK 或服务</strong>，包括广告、统计分析、社交分享、推送通知等，不依赖任何外部服务提供商。</p>
+    async function main() {
+      const promises = wechatIds.map(id => fetchRSS(id));
+      await Promise.all(promises);
+      // 按时间倒序
+      articles.sort((a, b) => new Date(b.date) - new Date(a.date));
+      const container = document.getElementById('articles');
+      articles.forEach(a => {
+        const div = document.createElement('div');
+        div.className = 'article';
+        div.innerHTML = `
+          <a class="title" href="${a.link}" target="_blank">${a.title}</a>
+          <div class="source">来源：${a.source}</div>
+          <div class="date">${a.date}</div>
+        `;
+        container.appendChild(div);
+      });
+    }
 
-  <h2>5. 儿童隐私保护</h2>
-  <p>本应用为儿童学习辅助工具，但<strong不收集任何儿童个人信息</strong>，亦不提供在线交互或社交功能。我们严格遵守《儿童个人信息网络保护规定》等相关法律法规，切实保护儿童隐私权益。</p>
-
-  <h2>6. 隐私政策更新</h2>
-  <p>我们可能会根据法律法规或产品功能变化，不定期更新本隐私政策。更新后，我们将通过应用内提示或版本更新日志等方式告知您。</p>
-
-  <h2>7. 联系方式</h2>
-  <p>如您对本隐私政策有任何疑问或建议，请联系开发者：</p>
-  <p>邮箱：<a href="mailto:8959905@qq.com">8958805@qq.com</a></p>
+    main();
+  </script>
 </body>
 </html>
