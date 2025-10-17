@@ -5,34 +5,78 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>我的公众号</title>
   <style>
-    body { font-family: -apple-system, sans-serif; padding: 15px; background: #f5f5f7; }
+    body { font-family: -apple-system, sans-serif; padding: 15px; background: #f5f5f7; margin: 0; }
     h1 { font-size: 20px; margin-bottom: 15px; }
-    .article-count { font-size: 14px; color: #666; margin-bottom: 20px; }
     .article { background: white; margin: 10px 0; padding: 12px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .title { font-size: 16px; color: #0078d4; text-decoration: none; display: block; margin-bottom: 5px; }
-    .title:hover { text-decoration: underline; }
+    .title { font-size: 16px; color: #0078d4; text-decoration: none; display: block; margin-bottom: 5px; cursor: pointer; }
     .source { font-size: 12px; color: #888; margin-bottom: 3px; }
     .date { font-size: 11px; color: #aaa; }
     #loading { color: #888; }
+    #reader {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: white;
+      z-index: 1000;
+      overflow: auto;
+      padding: 20px;
+    }
+    #reader h2 { margin-top: 0; }
+    #close-reader {
+      position: fixed;
+      top: 15px; right: 20px;
+      font-size: 24px;
+      cursor: pointer;
+      color: #888;
+    }
   </style>
 </head>
 <body>
   <h1>未读公众号文章</h1>
   <div id="loading">正在加载...</div>
-  <div class="article-count" id="count"></div>
   <div id="articles"></div>
 
+  <div id="reader">
+    <span id="close-reader">&times;</span>
+    <div id="reader-content">加载中...</div>
+  </div>
+
   <script>
-    // ✅ 在这里填写你的公众号 ID（来自 er.shi.ci.mi）
     const wechatIds = [
-      'yujiantouzi',        // 郁见投资
-      'ticaiyanjiushi'      // 题材研究室
+      'yujiantouzi',
+      'ticaiyanjiushi'
+      // 添加更多...
     ];
 
     const articles = [];
 
+    // 提取微信文章正文（通过代理）
+    async function extractContent(url) {
+      const proxy = 'https://api.allorigins.win/raw?url=';
+      try {
+        const response = await fetch(proxy + encodeURIComponent(url));
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // 尝试提取正文（微信文章结构）
+        let content = doc.querySelector('#js_content') || 
+                      doc.querySelector('.rich_media_content') ||
+                      doc.querySelector('body');
+        
+        if (content) {
+          // 清理无用元素
+          content.querySelectorAll('script, style, iframe, .advertisement').forEach(el => el.remove());
+          return content.innerHTML;
+        }
+        return '<p>未能提取正文，请<a href="' + url + '" target="_blank">点击此处跳转原文</a>。</p>';
+      } catch (e) {
+        console.error('提取失败:', e);
+        return '<p>加载失败，请<a href="' + url + '" target="_blank">点击此处跳转原文</a>。</p>';
+      }
+    }
+
     async function fetchRSS(id) {
-      // 使用国内较稳定的 RSSHub 镜像
       const url = `https://rsshub.moe/wechat/ershicimi/${id}`;
       try {
         const response = await fetch(url);
@@ -49,42 +93,46 @@
           articles.push({ title, link, date, source: id });
         });
       } catch (e) {
-        console.error('加载失败:', id, e);
+        console.error('RSS加载失败:', id, e);
       }
     }
+
+    function showReader(content) {
+      document.getElementById('reader-content').innerHTML = content;
+      document.getElementById('reader').style.display = 'block';
+    }
+
+    async function loadArticle(url) {
+      document.getElementById('reader-content').innerHTML = '正在加载文章...';
+      const content = await extractContent(url);
+      showReader(content);
+    }
+
+    document.getElementById('close-reader').onclick = () => {
+      document.getElementById('reader').style.display = 'none';
+    };
 
     async function main() {
       document.getElementById('loading').textContent = '正在加载文章...';
       const promises = wechatIds.map(id => fetchRSS(id));
       await Promise.all(promises);
-      
-      // 按时间倒序
       articles.sort((a, b) => new Date(b.date) - new Date(a.date));
-      
       const container = document.getElementById('articles');
-      const countEl = document.getElementById('count');
-      
-      if (articles.length === 0) {
-        container.innerHTML = '<p>暂无文章，请检查公众号ID或网络。</p>';
-        countEl.textContent = '共显示 0 篇文章';
-      } else {
-        container.innerHTML = '';
-        articles.forEach(a => {
-          const div = document.createElement('div');
-          div.className = 'article';
-          div.innerHTML = `
-            <a class="title" href="${a.link}" target="_blank">${a.title}</a>
-            <div class="source">来源：${a.source}</div>
-            <div class="date">${a.date}</div>
-          `;
-          container.appendChild(div);
-        });
-        countEl.textContent = `共显示 ${articles.length} 篇文章`;
-      }
+      container.innerHTML = '';
+      articles.forEach(a => {
+        const div = document.createElement('div');
+        div.className = 'article';
+        div.innerHTML = `
+          <div class="title" onclick="loadArticle('${a.link}')">${a.title}</div>
+          <div class="source">来源：${a.source}</div>
+          <div class="date">${a.date}</div>
+        `;
+        container.appendChild(div);
+      });
       document.getElementById('loading').style.display = 'none';
     }
 
     main();
   </script>
 </body>
-</html>    
+</html>
